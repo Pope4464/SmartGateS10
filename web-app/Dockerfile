@@ -1,3 +1,4 @@
+# ----- S10 Group Added
 # Use the official Python Docker image (OS: Debian)
 FROM python:3.9.22-bookworm
 
@@ -22,8 +23,8 @@ RUN apt-get update && \
 # Install the required Python packages from the requirements.txt file
 RUN pip install --no-cache-dir -r /SmartGate/requirements.txt
 
-# Expose both Uvicorn (8000) & PostgreSQL (5432)
-EXPOSE 8000 5432
+# Expose all required ports for S10 integration
+EXPOSE 8000 5432 5000 1883 8080 2222
 
 # start the shell
 ENTRYPOINT ["python", "app.py"]

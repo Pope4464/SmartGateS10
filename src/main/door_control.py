@@ -1,6 +1,7 @@
 import io_control as io
 import time
 import threading
+import requests
 
 #This class is used to set and control the state of the door of the gate
 
@@ -100,3 +101,24 @@ class DoorControl:
         """
         with self.lock:
             return io.get_val('OPEN') == 1 and io.get_val('CLOSE') == 0
+
+# ----- S10 Group Added
+# --------------S10 MQTT CONTROL--------------
+def send_mqtt_command(command):
+    """Send MQTT command to EC2"""
+    try:
+        data = {"command": command, "timestamp": time.time()}
+        requests.post("http://54.252.172.171:5000/send_command", json=data, timeout=2)
+    except:
+        pass  # Fail silently
+
+def mqtt_open_door(self):
+    """Open door via MQTT command"""
+    self.open_door()
+    send_mqtt_command("door_opened")  # S10 CODE MQTT
+
+def mqtt_close_door(self):
+    """Close door via MQTT command"""
+    self.close_door()
+    send_mqtt_command("door_closed")  # S10 CODE MQTT
+    # --------------S10 MQTT CONTROL END--------------

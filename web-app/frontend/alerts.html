@@ -78,9 +78,23 @@
             });
         }
 
+        // --------------S10 MQTT ALERTS--------------
+        function loadAlerts() {
+            fetch('/alerts')
+                .then(response => response.json())
+                .then(data => {
+                    updateAlertsTable(data.alerts);
+                })
+                .catch(error => console.error('Error loading alerts:', error));
+        }
+        
         document.addEventListener("DOMContentLoaded", function () {
             console.log("DOM fully loaded and parsed");
+            loadAlerts();
+            // Refresh alerts every 5 seconds
+            setInterval(loadAlerts, 5000);
         });
+        // --------------S10 MQTT ALERTS END--------------
     </script>
 
     <style>
@@ -159,6 +173,21 @@
 
         .alert-level.low {
             color: #28a745;
+            font-weight: bold;
+        }
+        
+        .alert-level.info {
+            color: #17a2b8;
+            font-weight: bold;
+        }
+        
+        .alert-level.warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        
+        .alert-level.critical {
+            color: #dc3545;
             font-weight: bold;
         }
 

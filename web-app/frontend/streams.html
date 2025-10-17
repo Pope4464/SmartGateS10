@@ -1,0 +1,205 @@
+{% extends "layout.html" %}
+
+{% block title %}Streams{% endblock %}
+
+{% block content %}
+<!-- Main Content Wrapper -->
+<div class="main-content">
+    <section class="background">
+        <video autoplay muted loop id="backgroundVideo">
+            <source src="../static/NewFolder/bakground_video.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="overlay"></div>
+    </section>
+
+    <div class="about-container">
+        <h1>Camera Streams</h1>
+    </div>
+
+    <!-- Camera Streams -->
+    <div class="camera-feeds">
+        <div class="camera-feed" data-gate-no="1">
+            <div class="stream-container" id="stream1">
+                <img src="/static/images/amur-leopard.jpg" alt="Camera Stream" class="stream-placeholder">
+            </div>
+            <div class="feed-info">
+                <span>GATE NO: 1</span><br>
+                <span class="status offline">Status: Offline</span>
+            </div>
+            <div class="feed-buttons">
+                <button class="btn start-stream" onclick="toggleStream(1)">START STREAM</button>
+            </div>
+        </div>
+        <div class="camera-feed" data-gate-no="2">
+            <div class="stream-container" id="stream2">
+                <img src="/static/images/bongo-antelope.jpg" alt="Camera Stream" class="stream-placeholder">
+            </div>
+            <div class="feed-info">
+                <span>GATE NO: 2</span><br>
+                <span class="status offline">Status: Offline</span>
+            </div>
+            <div class="feed-buttons">
+                <button class="btn start-stream" onclick="toggleStream(2)">START STREAM</button>
+            </div>
+        </div>
+        <div class="camera-feed" data-gate-no="3">
+            <div class="stream-container" id="stream3">
+                <img src="/static/images/elephant.jpeg" alt="Camera Stream" class="stream-placeholder">
+            </div>
+            <div class="feed-info">
+                <span>GATE NO: 3</span><br>
+                <span class="status offline">Status: Offline</span>
+            </div>
+            <div class="feed-buttons">
+                <button class="btn start-stream" onclick="toggleStream(3)">START STREAM</button>
+            </div>
+        </div>
+        <div class="camera-feed" data-gate-no="4">
+            <div class="stream-container" id="stream4">
+                <img src="/static/images/forest-background.jpg" alt="Camera Stream" class="stream-placeholder">
+            </div>
+            <div class="feed-info">
+                <span>GATE NO: 4</span><br>
+                <span class="status offline">Status: Offline</span>
+            </div>
+            <div class="feed-buttons">
+                <button class="btn start-stream" onclick="toggleStream(4)">START STREAM</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+// --------------S10 CAMERA STREAM--------------
+function toggleStream(gateNo) {
+    const button = document.querySelector(`[data-gate-no="${gateNo}"] .btn`);
+    const status = document.querySelector(`[data-gate-no="${gateNo}"] .status`);
+    const container = document.getElementById(`stream${gateNo}`);
+    
+    if (button.textContent === 'START STREAM') {
+        // Start stream
+        button.textContent = 'STOP STREAM';
+        button.className = 'btn stop-stream';
+        status.textContent = 'Status: Online';
+        status.className = 'status online';
+        
+        // Replace placeholder with actual stream
+        container.innerHTML = `<img src="http://54.252.172.171:8080/stream" alt="Live Stream" class="live-stream">`;
+        
+        // S10 CODE MQTT
+        fetch('/send_command', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({command: 'start_stream', gate: gateNo})
+        });
+    } else {
+        // Stop stream
+        button.textContent = 'START STREAM';
+        button.className = 'btn start-stream';
+        status.textContent = 'Status: Offline';
+        status.className = 'status offline';
+        
+        // Replace stream with placeholder
+        const placeholders = ['/static/images/amur-leopard.jpg', '/static/images/bongo-antelope.jpg', 
+                            '/static/images/elephant.jpeg', '/static/images/forest-background.jpg'];
+        container.innerHTML = `<img src="${placeholders[gateNo-1]}" alt="Camera Stream" class="stream-placeholder">`;
+        
+        // S10 CODE MQTT
+        fetch('/send_command', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({command: 'stop_stream', gate: gateNo})
+        });
+    }
+    // --------------S10 CAMERA STREAM END--------------
+}
+</script>
+
+<style>
+    .background {
+        position: relative;
+        text-align: center;
+        color: white;
+        padding: 10px 10px;
+        height: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 1;
+    }
+    
+    .camera-feeds {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, auto);
+        gap: 15px;
+        padding: 20px;
+        position: relative;
+        z-index: 10;
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+
+    .camera-feed {
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        text-align: center;
+        padding: 10px;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .stream-container {
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .stream-placeholder, .live-stream {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .feed-info {
+        margin: 10px 0;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .status.online {
+        color: green;
+    }
+
+    .status.offline {
+        color: red;
+    }
+
+    .feed-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn.start-stream {
+        background-color: green;
+        color: white;
+    }
+
+    .btn.stop-stream {
+        background-color: red;
+        color: white;
+    }
+</style>
+{% endblock %}

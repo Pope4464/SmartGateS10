@@ -16,6 +16,8 @@ from json_config import JsonConfig
 
 import signal
 import sys
+import json
+import requests
 
 def gstreamer_pipeline(
     capture_width=1280,
@@ -35,6 +37,17 @@ def gstreamer_pipeline(
         f"videoconvert ! "
         f"video/x-raw, format=(string)BGR ! appsink"
     )
+
+# ----- S10 Group Added
+# --------------S10 MQTT DETECTION--------------
+def send_detection_alert(objects_detected):
+    """Send detection info to EC2 via MQTT"""
+    try:
+        data = {"objects": objects_detected, "timestamp": time.time()}
+        requests.post("http://54.252.172.171:5000/detection", json=data, timeout=2)
+    except:
+        pass  # Fail silently to not interrupt main loop
+    # --------------S10 MQTT DETECTION END--------------
 
 def cleanup():
     print("[+] Cleaning up resources...")
@@ -137,6 +150,7 @@ def main():
             set_latest_frame(img.copy())
 
             object_list = [obj['class'] for obj in detections]
+            send_detection_alert(object_list)  # S10 CODE MQTT
             current_state = State.DECISION
 
         #------------DECISION State --------------------------------------------------------

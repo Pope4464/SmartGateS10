@@ -1,3 +1,4 @@
+# ----- S10 Group Added
 #Start with a base image that includes CUDA and Python
 FROM nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
 
@@ -33,6 +34,8 @@ RUN apt-get update && apt-get install -y \
     gstreamer1.0-tools \
     libglib2.0-dev \
     libgstrtspserver-1.0-dev \
+    openssh-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 #Upgrade pip
@@ -51,7 +54,11 @@ RUN pip3 install --no-cache-dir \
     pycuda \
     opencv-python==4.3.0.38 \
     Jetson.GPIO==2.0.17 \
-    jetson-stats==3.1.4
+    jetson-stats==3.1.4 \
+    paho-mqtt \
+    requests \
+    fastapi \
+    uvicorn
 
 #Clone and build OpenCV with GStreamer support. This is needed for camera access.
 RUN git clone https://github.com/opencv/opencv.git && \
@@ -77,5 +84,12 @@ RUN git clone https://github.com/opencv/opencv.git && \
 #Set the working directory under /app
 WORKDIR /app
 
+#Expose ports for S10 MQTT integration
+EXPOSE 8000 1883 22
+
 #Copy application code
 COPY . /app
+
+#Set up SSH key permissions for reverse tunnel
+RUN mkdir -p /app/reverse_tunnel && \
+    chmod 700 /app/reverse_tunnel

@@ -1,3 +1,4 @@
+# ----- S10 Group Added
 networks:
   sgnet:
     driver: bridge
@@ -7,6 +8,10 @@ services:
     build: . 
     ports:
       - "8000:8000"  # Expose web app on port 8000
+      - "5000:5000"  # Expose AWS EC2 MQTT client FastAPI
+      - "1883:1883"  # Expose MQTT broker (Mosquitto)
+      - "8080:8080"  # Expose camera stream (reverse tunnel)
+      - "2222:2222"  # Expose SSH reverse tunnel
     environment:
       - DATABASE_URL=postgresql://admin:smartgate@postgres:5432/smartgatedb
       - ENV=development

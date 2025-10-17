@@ -1,0 +1,8 @@
+{
+  "ec2_ip": "54.252.172.171",
+  "ec2_user": "admin",
+  "ssh_key_path": "./reverse_tunnel/aws_key",
+  "mqtt_port": 1883,
+  "ssh_port": 22,
+  "tunnel_port": 2222
+}

@@ -20,6 +20,12 @@
             <div class="histo-stats-container">
                 <div id="animal-count-histo"></div>
                 <div class="stats-table"></div>
+                <!-- --------------S10 LATEST CAPTURE-------------- -->
+                <div class="latest-capture-box">
+                    <h3>Latest Capture</h3>
+                    <img id="latest-capture-img" src="/static/images/placeholder.jpg" alt="Latest Capture" style="width: 200px; height: 150px; object-fit: cover; border-radius: 8px;">
+                    <p id="capture-timestamp">No captures yet</p>
+                </div>
             </div>
         </div>
     </div>
@@ -200,6 +206,22 @@
         };
 
         Plotly.newPlot('animal-count-histo', data, layout);
+        
+        // --------------S10 LATEST CAPTURE--------------
+        function updateLatestCapture() {
+            fetch('/latest-capture')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.capture) {
+                        document.getElementById('latest-capture-img').src = data.capture.image_url;
+                        document.getElementById('capture-timestamp').textContent = data.capture.timestamp;
+                    }
+                });
+        }
+        
+        // Update latest capture every 10 seconds
+        setInterval(updateLatestCapture, 10000);
+        // --------------S10 LATEST CAPTURE END--------------
     </script>
     <style>
         .table-histo-container {
@@ -237,6 +259,20 @@
             margin: 0px 35px;
             height: auto;
             display: inline-block;
+        }
+        
+        .latest-capture-box {
+            margin: 20px 35px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+        }
+        
+        .latest-capture-box h3 {
+            margin-bottom: 10px;
+            color: #17BECF;
         }
     </style>
 {% endblock %}

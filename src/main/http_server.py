@@ -180,3 +180,15 @@ def Fetch_Queued_Command():
     if not command_queue.empty():
         return command_queue.get()
     return None
+
+# ----- S10 Group Added
+# --------------S10 CAMERA STREAM--------------
+def start_reverse_stream():
+    """Start camera stream accessible via reverse tunnel"""
+    try:
+        import subprocess
+        subprocess.Popen(["ssh", "-i", "../reverse_tunnel/aws_key", "-R", "8080:localhost:8000", "admin@54.252.172.171", "-N"])
+        print("[+] Reverse stream started on port 8080")
+    except Exception as e:
+        print(f"[-] Failed to start reverse stream: {e}")
+    # --------------S10 CAMERA STREAM END--------------
