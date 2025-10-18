@@ -9,7 +9,6 @@ services:
     ports:
       - "8000:8000"  # Expose web app on port 8000
       - "5000:5000"  # Expose AWS EC2 MQTT client FastAPI
-      - "1883:1883"  # Expose MQTT broker (Mosquitto)
       - "8080:8080"  # Expose camera stream (reverse tunnel)
       - "2222:2222"  # Expose SSH reverse tunnel
     environment:

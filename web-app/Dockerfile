@@ -13,10 +13,9 @@ COPY requirements.txt /SmartGate/
 # Copy the rest of the application code to the container
 COPY . /SmartGate/
 
-# Update, upgrade and install system dependencies
+# Update and install system dependencies
 RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y sudo nano libdbus-1-dev neofetch postgresql openssh-client openssh-server neovim && \
+    apt-get install -y sudo nano libdbus-1-dev neofetch postgresql-client openssh-client neovim && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
