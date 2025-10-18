@@ -104,21 +104,28 @@ class DoorControl:
 
 # ----- S10 Group Added
 # --------------S10 MQTT CONTROL--------------
-def send_mqtt_command(command):
-    """Send MQTT command to EC2"""
+def send_mqtt_command(command, detection_data=None):
+    """Send MQTT command to EC2 with detection context"""
     try:
-        data = {"command": command, "timestamp": time.time()}
-        requests.post("http://54.252.172.171:5000/send_command", json=data, timeout=2)
+        from mqtt_jetson_client import mqtt_client
+        import time
+        
+        status_data = {
+            "status": command,
+            "timestamp": time.time(),
+            "detection_context": detection_data
+        }
+        mqtt_client.publish_status(status_data)
     except:
         pass  # Fail silently
 
-def mqtt_open_door(self):
-    """Open door via MQTT command"""
+def mqtt_open_door(self, detection_data=None):
+    """Open door via MQTT command with detection context"""
     self.open_door()
-    send_mqtt_command("door_opened")  # S10 CODE MQTT
+    send_mqtt_command("door_opened", detection_data)  # S10 CODE MQTT
 
-def mqtt_close_door(self):
-    """Close door via MQTT command"""
+def mqtt_close_door(self, detection_data=None):
+    """Close door via MQTT command with detection context"""
     self.close_door()
-    send_mqtt_command("door_closed")  # S10 CODE MQTT
+    send_mqtt_command("door_closed", detection_data)  # S10 CODE MQTT
     # --------------S10 MQTT CONTROL END--------------

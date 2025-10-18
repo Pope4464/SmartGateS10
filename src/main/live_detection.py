@@ -18,6 +18,9 @@ import signal
 import sys
 import json
 import requests
+import time
+import base64
+import cv2
 
 def gstreamer_pipeline(
     capture_width=1280,
@@ -40,13 +43,36 @@ def gstreamer_pipeline(
 
 # ----- S10 Group Added
 # --------------S10 MQTT DETECTION--------------
-def send_detection_alert(objects_detected):
-    """Send detection info to EC2 via MQTT"""
+# Global variable to store latest detection data
+latest_detection_data = None
+
+def send_detection_alert(objects_detected, detections=None, detection_image=None):
+    """Send detection info to EC2 via MQTT and store latest detection"""
+    global latest_detection_data
     try:
-        data = {"objects": objects_detected, "timestamp": time.time()}
-        requests.post("http://54.252.172.171:5000/detection", json=data, timeout=2)
+        from mqtt_jetson_client import mqtt_client
+        mqtt_client.publish_detection(objects_detected)
+        
+        # Store latest detection data with image
+        if detection_image is not None and detections is not None:
+            # Encode image to base64 for storage
+            _, buffer = cv2.imencode('.jpg', detection_image)
+            image_base64 = base64.b64encode(buffer).decode('utf-8')
+            
+            latest_detection_data = {
+                "objects": objects_detected,
+                "detections": detections,
+                "confidence": [obj.get('confidence', 0) for obj in detections] if detections else [],
+                "timestamp": time.time(),
+                "image_base64": image_base64
+            }
     except:
         pass  # Fail silently to not interrupt main loop
+
+def get_latest_detection():
+    """Get latest detection data"""
+    global latest_detection_data
+    return latest_detection_data
     # --------------S10 MQTT DETECTION END--------------
 
 def cleanup():
@@ -150,7 +176,7 @@ def main():
             set_latest_frame(img.copy())
 
             object_list = [obj['class'] for obj in detections]
-            send_detection_alert(object_list)  # S10 CODE MQTT
+            send_detection_alert(object_list, detections, img)  # S10 CODE MQTT
             current_state = State.DECISION
 
         #------------DECISION State --------------------------------------------------------
@@ -166,9 +192,14 @@ def main():
 
             if not door_controller.is_door_fully_open():
                 door_controller.open_door()
+                # Send status with detection context
+                from door_control import send_mqtt_command
+                send_mqtt_command("door_opening", get_latest_detection())
             else:
                 print('Door stopped on opening')
                 door_controller.stop_door()
+                from door_control import send_mqtt_command
+                send_mqtt_command("door_opened", get_latest_detection())
             
             current_state = State.IDLE
 
@@ -179,9 +210,14 @@ def main():
             #Read Hall Effect sensor of Door Closed. Keep closing if the Hall effect sensor is 0
             if not door_controller.is_door_fully_closed():
                 door_controller.close_door()
+                # Send status with detection context
+                from door_control import send_mqtt_command
+                send_mqtt_command("door_closing", get_latest_detection())
             else:
                 print('Door stopped on closing')
                 door_controller.stop_door()
+                from door_control import send_mqtt_command
+                send_mqtt_command("door_closed", get_latest_detection())
                 
             current_state = State.IDLE
 

@@ -8,12 +8,16 @@ import threading
 from queue import Queue
 import json
 import psutil
+import time
 from door_control import DoorControl
 
 ### HTTP Server Handler. ###
 
 #Global variable to store the latest frame
 latest_frame = None
+
+#Global variable to store door controller reference
+door_controller = None
 gate_status  = None
 
 # Global queue to communicate between HTTP server and main thread
@@ -62,6 +66,75 @@ class HTTPHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             status = get_jetson_status()
             self.wfile.write(json.dumps(status).encode('utf-8'))
+
+        # --------------S10 LATEST CAPTURE--------------
+        #--- Latest detection capture request. ---
+        elif self.path == '/latest-capture':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            try:
+                from live_detection import get_latest_detection
+                latest_detection = get_latest_detection()
+                if latest_detection:
+                    # Return detection data with image
+                    response_data = {
+                        "capture": {
+                            "objects": latest_detection.get("objects", []),
+                            "confidence": latest_detection.get("confidence", []),
+                            "timestamp": latest_detection.get("timestamp", 0),
+                            "image_base64": latest_detection.get("image_base64", ""),
+                            "detections": latest_detection.get("detections", [])
+                        }
+                    }
+                else:
+                    response_data = {
+                        "capture": {
+                            "objects": [],
+                            "confidence": [],
+                            "timestamp": 0,
+                            "image_base64": "",
+                            "detections": []
+                        }
+                    }
+                self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            except Exception as e:
+                error_response = {"error": str(e)}
+                self.wfile.write(json.dumps(error_response).encode('utf-8'))
+        # --------------S10 LATEST CAPTURE END--------------
+
+        # --------------S10 GATE STATUS--------------
+        #--- Gate status request. ---
+        elif self.path == '/gate-status':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            try:
+                # Get current gate status from door controller
+                if door_controller:
+                    if door_controller.is_door_fully_open():
+                        gate_status = "open"
+                    elif door_controller.is_door_fully_closed():
+                        gate_status = "closed"
+                    else:
+                        gate_status = "moving"
+                else:
+                    gate_status = "unknown"
+                
+                # Get latest detection context
+                from live_detection import get_latest_detection
+                latest_detection = get_latest_detection()
+                
+                response_data = {
+                    "status": gate_status,
+                    "last_update": time.time(),
+                    "detection_context": latest_detection
+                }
+                self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            except Exception as e:
+                error_response = {"error": str(e), "status": "unknown"}
+                self.wfile.write(json.dumps(error_response).encode('utf-8'))
+        # --------------S10 GATE STATUS END--------------
 
         else:
             #Obtain any other web resources contained relatively within the 'web/' directory
@@ -120,9 +193,9 @@ def set_latest_frame(frame):
     latest_frame = frame
 
 #Set the door_controller reference to read door status 
-def set_door_controller_reference(door_controller : DoorControl):
-    global gate_status
-    gate_status = door_controller
+def set_door_controller_reference(door_controller_ref : DoorControl):
+    global door_controller
+    door_controller = door_controller_ref
 
 #Obtain the statistics from the SmartGate (Jetson Nano and board)
 def get_jetson_status():
@@ -180,15 +253,3 @@ def Fetch_Queued_Command():
     if not command_queue.empty():
         return command_queue.get()
     return None
-
-# ----- S10 Group Added
-# --------------S10 CAMERA STREAM--------------
-def start_reverse_stream():
-    """Start camera stream accessible via reverse tunnel"""
-    try:
-        import subprocess
-        subprocess.Popen(["ssh", "-i", "../reverse_tunnel/aws_key", "-R", "8080:localhost:8000", "admin@54.252.172.171", "-N"])
-        print("[+] Reverse stream started on port 8080")
-    except Exception as e:
-        print(f"[-] Failed to start reverse stream: {e}")
-    # --------------S10 CAMERA STREAM END--------------

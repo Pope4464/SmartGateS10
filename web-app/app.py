@@ -4,10 +4,19 @@ from controllers.main_controller import root_router
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 import asyncio
+import threading
 
 @asynccontextmanager
 async def lifespan(app):
     try:
+        # Start MQTT client in background thread
+        from mqtt.mqtt_client import get_mqtt_client
+        mqtt_client = get_mqtt_client()
+        
+        # Start MQTT connection in background thread
+        mqtt_thread = threading.Thread(target=mqtt_client.start_mqtt, daemon=True)
+        mqtt_thread.start()
+        
         yield
     except asyncio.CancelledError:
         # Prevent ugly traceback on Ctrl+C

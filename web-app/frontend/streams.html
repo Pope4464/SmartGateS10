@@ -17,60 +17,64 @@
         <h1>Camera Streams</h1>
     </div>
 
-    <!-- Camera Streams -->
-    <div class="camera-feeds">
-        <div class="camera-feed" data-gate-no="1">
-            <div class="stream-container" id="stream1">
-                <img src="/static/images/amur-leopard.jpg" alt="Camera Stream" class="stream-placeholder">
-            </div>
-            <div class="feed-info">
-                <span>GATE NO: 1</span><br>
-                <span class="status offline">Status: Offline</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn start-stream" onclick="toggleStream(1)">START STREAM</button>
-            </div>
-        </div>
-        <div class="camera-feed" data-gate-no="2">
-            <div class="stream-container" id="stream2">
-                <img src="/static/images/bongo-antelope.jpg" alt="Camera Stream" class="stream-placeholder">
-            </div>
-            <div class="feed-info">
-                <span>GATE NO: 2</span><br>
-                <span class="status offline">Status: Offline</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn start-stream" onclick="toggleStream(2)">START STREAM</button>
-            </div>
-        </div>
-        <div class="camera-feed" data-gate-no="3">
-            <div class="stream-container" id="stream3">
-                <img src="/static/images/elephant.jpeg" alt="Camera Stream" class="stream-placeholder">
-            </div>
-            <div class="feed-info">
-                <span>GATE NO: 3</span><br>
-                <span class="status offline">Status: Offline</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn start-stream" onclick="toggleStream(3)">START STREAM</button>
-            </div>
-        </div>
-        <div class="camera-feed" data-gate-no="4">
-            <div class="stream-container" id="stream4">
-                <img src="/static/images/forest-background.jpg" alt="Camera Stream" class="stream-placeholder">
-            </div>
-            <div class="feed-info">
-                <span>GATE NO: 4</span><br>
-                <span class="status offline">Status: Offline</span>
-            </div>
-            <div class="feed-buttons">
-                <button class="btn start-stream" onclick="toggleStream(4)">START STREAM</button>
-            </div>
-        </div>
+    <!-- Camera Streams - Dynamically Rendered -->
+    <div class="camera-feeds" id="streams-container">
+        <!-- Streams will be dynamically rendered here -->
     </div>
 </div>
 
 <script>
+// --------------S10 DYNAMIC STREAMS--------------
+const streamImages = [
+    '/static/images/amur-leopard.jpg',
+    '/static/images/bongo-antelope.jpg', 
+    '/static/images/elephant.jpeg',
+    '/static/images/forest-background.jpg',
+    '/static/images/oranguton.jpg',
+    '/static/images/panda.jpg'
+];
+
+function renderStreams(gatesData) {
+    const container = document.getElementById('streams-container');
+    container.innerHTML = '';
+    
+    gatesData.forEach((gate, index) => {
+        const streamDiv = document.createElement('div');
+        streamDiv.className = 'camera-feed';
+        streamDiv.setAttribute('data-gate-no', gate.id);
+        
+        // Determine online/offline status
+        const onlineStatus = gate.online_status || 'offline';
+        
+        streamDiv.innerHTML = `
+            <div class="stream-container" id="stream${gate.id}">
+                <img src="${gate.image_url || streamImages[index] || '/static/images/placeholder.jpg'}" alt="Camera Stream" class="stream-placeholder">
+            </div>
+            <div class="feed-info">
+                <span>GATE NO: ${gate.id}</span><br>
+                <span class="online-status ${onlineStatus}">${onlineStatus.toUpperCase()}</span><br>
+                <span class="status offline">Status: Offline</span>
+            </div>
+            <div class="feed-buttons">
+                <button class="btn start-stream" onclick="toggleStream(${gate.id})" ${onlineStatus === 'offline' ? 'disabled' : ''}>START STREAM</button>
+            </div>
+        `;
+        container.appendChild(streamDiv);
+    });
+}
+
+function loadStreams() {
+    fetch('/gates/api')
+        .then(response => response.json())
+        .then(data => {
+            renderStreams(data.gates || []);
+        })
+        .catch(error => {
+            console.error('Error loading streams:', error);
+            // Fallback to empty streams if API fails
+            renderStreams([]);
+        });
+}
 
 // --------------S10 CAMERA STREAM--------------
 function toggleStream(gateNo) {
@@ -85,15 +89,10 @@ function toggleStream(gateNo) {
         status.textContent = 'Status: Online';
         status.className = 'status online';
         
-        // Replace placeholder with actual stream
+        // Replace placeholder with actual stream (via reverse tunnel)
         container.innerHTML = `<img src="http://54.252.172.171:8080/stream" alt="Live Stream" class="live-stream">`;
         
-        // S10 CODE MQTT
-        fetch('/send_command', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({command: 'start_stream', gate: gateNo})
-        });
+        // S10 CODE REVERSE TUNNEL - Stream accessible via reverse tunnel
     } else {
         // Stop stream
         button.textContent = 'START STREAM';
@@ -104,17 +103,22 @@ function toggleStream(gateNo) {
         // Replace stream with placeholder
         const placeholders = ['/static/images/amur-leopard.jpg', '/static/images/bongo-antelope.jpg', 
                             '/static/images/elephant.jpeg', '/static/images/forest-background.jpg'];
-        container.innerHTML = `<img src="${placeholders[gateNo-1]}" alt="Camera Stream" class="stream-placeholder">`;
+        const placeholderIndex = (gateNo - 1) % placeholders.length;
+        container.innerHTML = `<img src="${placeholders[placeholderIndex]}" alt="Camera Stream" class="stream-placeholder">`;
         
-        // S10 CODE MQTT
-        fetch('/send_command', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({command: 'stop_stream', gate: gateNo})
-        });
+        // S10 CODE REVERSE TUNNEL - Stream stopped, no additional command needed
     }
     // --------------S10 CAMERA STREAM END--------------
 }
+
+// Load streams on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadStreams();
+});
+
+// Update streams every 5 seconds
+setInterval(loadStreams, 5000);
+// --------------S10 DYNAMIC STREAMS END--------------
 </script>
 
 <style>
@@ -177,6 +181,21 @@ function toggleStream(gateNo) {
 
     .status.offline {
         color: red;
+    }
+    
+    .online-status.online {
+        color: #28a745;
+        font-weight: bold;
+    }
+    
+    .online-status.offline {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     .feed-buttons {

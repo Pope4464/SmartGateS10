@@ -18,5 +18,15 @@
     
     "server": {
         "port": 8080
+    },
+    
+    "aws_ec2": {
+        "instance_ip": "54.252.172.171"
+    },
+    
+    "reverse_tunnel": {
+        "aws_port": 22,
+        "local_port": 8080,
+        "remote_port": 8080
     }
 }

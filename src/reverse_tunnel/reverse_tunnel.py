@@ -66,7 +66,7 @@ class ReverseTunnelClient:
                 "-o", "UserKnownHostsFile=/dev/null",
                 "-o", "ServerAliveInterval=30",
                 "-o", "ServerAliveCountMax=3",
-                f"ec2-user@{self.aws_host}"
+                f"admin@{self.aws_host}"
             ]
             
             logger.info(f"Connecting to AWS EC2 at {self.aws_host}")

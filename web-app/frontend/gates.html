@@ -44,15 +44,21 @@
             const gateDiv = document.createElement('div');
             gateDiv.className = 'camera-feed';
             gateDiv.setAttribute('data-gate-no', gate.id);
+            
+            // Determine online/offline status
+            const onlineStatus = gate.online_status || 'offline';
+            const gateStatus = gate.status || 'closed';
+            
             gateDiv.innerHTML = `
                 <img src="${gate.image_url || gateImages[index] || '/static/images/placeholder.jpg'}" alt="Camera Feed">
                 <div class="feed-info">
                     <span>GATE NO: ${gate.id}</span><br>
-                    <span class="status ${gate.status}">Status: ${gate.status}</span>
+                    <span class="online-status ${onlineStatus}">${onlineStatus.toUpperCase()}</span><br>
+                    <span class="status ${gateStatus}">Status: ${gateStatus}</span>
                 </div>
                 <div class="feed-buttons">
-                    <button class="btn open" onclick="openGate(${gate.id})">OPEN</button>
-                    <button class="btn close" onclick="closeGate(${gate.id})">CLOSE</button>
+                    <button class="btn open" onclick="openGate(${gate.id})" ${onlineStatus === 'offline' ? 'disabled' : ''}>OPEN</button>
+                    <button class="btn close" onclick="closeGate(${gate.id})" ${onlineStatus === 'offline' ? 'disabled' : ''}>CLOSE</button>
                 </div>
             `;
             container.appendChild(gateDiv);
@@ -60,7 +66,7 @@
     }
     
     function loadGates() {
-        fetch('/gates')
+        fetch('/gates/api')
             .then(response => response.json())
             .then(data => {
                 renderGates(data.gates || []);
@@ -86,8 +92,10 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({command: 'OPEN_DOOR', gate: gateNo})
         }).then(() => {
-            document.querySelector(`[data-gate-no="${gateNo}"] .status`).textContent = 'Status: Open';
-            document.querySelector(`[data-gate-no="${gateNo}"] .status`).className = 'status open';
+            // Status will be updated via MQTT, no need to update UI here
+            console.log(`Opening gate ${gateNo}`);
+        }).catch(error => {
+            console.error(`Error opening gate ${gateNo}:`, error);
         });
     }
     
@@ -97,21 +105,16 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({command: 'CLOSE_DOOR', gate: gateNo})
         }).then(() => {
-            document.querySelector(`[data-gate-no="${gateNo}"] .status`).textContent = 'Status: Closed';
-            document.querySelector(`[data-gate-no="${gateNo}"] .status`).className = 'status closed';
+            // Status will be updated via MQTT, no need to update UI here
+            console.log(`Closing gate ${gateNo}`);
+        }).catch(error => {
+            console.error(`Error closing gate ${gateNo}:`, error);
         });
     }
     
     // Update gate status from MQTT
     function updateGateStatus() {
-        fetch('/gate-status')
-            .then(response => response.json())
-            .then(data => {
-                document.querySelectorAll('.status').forEach(status => {
-                    status.textContent = `Status: ${data.status}`;
-                    status.className = `status ${data.status}`;
-                });
-            });
+        loadGates(); // Reload gates data to get latest status
     }
     
     // Load gates on page load
@@ -178,6 +181,21 @@
 
     .status.closed {
         color: red;
+    }
+    
+    .online-status.online {
+        color: #28a745;
+        font-weight: bold;
+    }
+    
+    .online-status.offline {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     .feed-buttons {

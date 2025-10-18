@@ -110,6 +110,10 @@ async def dashboard(request: Request):
 async def gates(request: Request):
     return await render_page("gates.html", "Gates", request)
 
+@root_router.get("/streams")
+async def streams(request: Request):
+    return await render_page("streams.html", "Streams", request)
+
 @root_router.get("/about")
 async def about(request: Request):
     return await render_page("about.html", "About", request)
@@ -206,6 +210,123 @@ async def get_session_username(request: Request):
 async def check_permission_api(username: str, perm_name: str):
     allowed = check_permission(username, perm_name)
     return JSONResponse(content={"allowed": allowed})
+
+# --------------S10 GROUP ENDPOINTS START-------------------
+
+@root_router.post("/send_command")
+async def send_command(request: Request):
+    """Send command to specific gate via MQTT"""
+    try:
+        data = await request.json()
+        command = data.get("command")
+        gate = data.get("gate", "1")  # Default to gate 1 if not specified
+        
+        if command:
+            # Import and use MQTT client
+            from mqtt.mqtt_client import get_mqtt_client
+            mqtt_client = get_mqtt_client()
+            
+            # Publish command to specific gate
+            topic = f"jetson/{gate}/commands"
+            mqtt_client.client.publish(topic, json.dumps({"action": command}))
+            
+            # Add to alerts system
+            from controllers.db_controller import add_alert
+            add_alert(f"Command sent to Gate {gate}: {command}", "info")
+            
+            return JSONResponse(content={"status": "sent", "gate": gate})
+        else:
+            return JSONResponse(content={"status": "error", "message": "No command provided"}, status_code=400)
+    except Exception as e:
+        print(f"Error sending command: {e}")
+        return JSONResponse(content={"status": "error"}, status_code=500)
+
+@root_router.get("/latest-capture")
+async def latest_capture():
+    """Get latest capture data from Jetson"""
+    try:
+        # Try to get from Jetson via reverse tunnel
+        import requests
+        response = requests.get("http://54.252.172.171:8080/latest-capture", timeout=5)
+        if response.status_code == 200:
+            return JSONResponse(content=response.json())
+        else:
+            # Fallback to placeholder data
+            return JSONResponse(content={
+                "capture": {
+                    "objects": [],
+                    "confidence": [],
+                    "timestamp": 0,
+                    "image_base64": "",
+                    "detections": []
+                }
+            })
+    except Exception as e:
+        print(f"Error getting latest capture: {e}")
+        # Fallback to placeholder data
+        return JSONResponse(content={
+            "capture": {
+                "objects": [],
+                "confidence": [],
+                "timestamp": 0,
+                "image_base64": "",
+                "detections": []
+            }
+        })
+
+@root_router.get("/gates/api")
+async def get_gates_api():
+    """Get gates data as JSON - dynamically discovered via MQTT"""
+    try:
+        # Get discovered gates from MQTT client
+        from mqtt.mqtt_client import get_mqtt_client
+        mqtt_client = get_mqtt_client()
+        discovered_gates = mqtt_client.get_discovered_gates()
+        
+        # Create gates data from discovered gates
+        gates_data = []
+        gate_images = [
+            "/static/images/amur-leopard.jpg",
+            "/static/images/bongo-antelope.jpg", 
+            "/static/images/elephant.jpeg",
+            "/static/images/forest-background.jpg",
+            "/static/images/oranguton.jpg",
+            "/static/images/panda.jpg"
+        ]
+        
+        # Add discovered gates (up to 5)
+        for gate_id, gate_info in discovered_gates.items():
+            if len(gates_data) < 5:  # Limit to 5 gates
+                gate_data = {
+                    "id": gate_id,
+                    "status": gate_info.get("gate_status", "closed"),
+                    "online_status": gate_info.get("status", "offline"),
+                    "image_url": gate_images[int(gate_id) - 1] if gate_id.isdigit() and 1 <= int(gate_id) <= 6 else gate_images[0],
+                    "last_seen": gate_info.get("last_seen", 0)
+                }
+                gates_data.append(gate_data)
+        
+        # Sort by gate ID
+        gates_data.sort(key=lambda x: int(x["id"]) if x["id"].isdigit() else 999)
+        
+        return JSONResponse(content={"gates": gates_data})
+    except Exception as e:
+        print(f"Error getting gates data: {e}")
+        # Fallback to empty gates list
+        return JSONResponse(content={"gates": []})
+
+@root_router.get("/alerts/api")
+async def get_alerts_api():
+    """Get alerts data as JSON"""
+    try:
+        alert_data = get_alert_data()
+        return JSONResponse(content={"alerts": alert_data})
+    except Exception as e:
+        print(f"Error getting alerts data: {e}")
+        return JSONResponse(content={"alerts": []})
+
+# --------------S10 GROUP ENDPOINTS END-------------------
+
 
 # ---------------------------------
 # Broadcasting Live Data Functions

@@ -80,7 +80,7 @@
 
         // --------------S10 MQTT ALERTS--------------
         function loadAlerts() {
-            fetch('/alerts')
+            fetch('/alerts/api')
                 .then(response => response.json())
                 .then(data => {
                     updateAlertsTable(data.alerts);
