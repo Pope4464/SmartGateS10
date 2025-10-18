@@ -104,7 +104,7 @@ class WebAppMQTTClient:
     def handle_per_gate_detection(self, gate_id, detection):
         """Handle per-gate detection updates"""
         objects = detection.get("objects", [])
-            if objects:
+        if objects:
             try:
                 from controllers.db_controller import add_alert
                 add_alert(f"Gate {gate_id}: Animal detected: {', '.join(objects)}", "warning")
